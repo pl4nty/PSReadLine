@@ -728,22 +728,7 @@ namespace Microsoft.PowerShell
             _savedCurrentLine = new HistoryItem();
             _queuedKeys = new Queue<PSKeyInfo>();
 
-            string hostName = null;
-            // This works mostly by luck - we're not doing anything to guarantee the constructor for our
-            // singleton is called on a thread with a runspace, but it is happening by coincidence.
-            using (var ps = System.Management.Automation.PowerShell.Create(RunspaceMode.CurrentRunspace))
-            {
-                try
-                {
-                    var results = ps.AddScript("[System.Diagnostics.DebuggerHidden()]param() $Host", useLocalScope: true).Invoke<PSHost>();
-                    PSHost host = results.Count == 1 ? results[0] : null;
-                    hostName = host?.Name;
-                }
-                catch
-                {
-                }
-            }
-
+            string hostName = BackgroundInitialization.HostName ?? BackgroundInitialization.ReadHostName();
             bool usingLegacyConsole = _console is PlatformWindows.LegacyWin32Console;
             _options = new PSConsoleReadLineOptions(hostName ?? DefaultName, usingLegacyConsole);
             _prediction = new Prediction(this);
