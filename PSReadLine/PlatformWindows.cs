@@ -155,7 +155,11 @@ static class PlatformWindows
         var breakHandlerGcHandle = GCHandle.Alloc(new BreakHandler(OnBreak));
         SetConsoleCtrlHandler((BreakHandler)breakHandlerGcHandle.Target, true);
         _enableVtOutput = !Console.IsOutputRedirected && SetConsoleOutputVirtualTerminalProcessing();
-        _terminalOwnerThreadId = GetTerminalOwnerThreadId();
+
+        // Finding the terminal window walks the process tree and enumerates windows, and it's only
+        // needed to read the keyboard layout; look it up off the startup path instead.
+        _terminalOwnerThreadId = new Lazy<uint>(GetTerminalOwnerThreadId);
+        System.Threading.Tasks.Task.Run(() => _ = _terminalOwnerThreadId.Value);
 
         return _enableVtOutput ? new VirtualTerminal() : new LegacyWin32Console();
     }
@@ -1032,7 +1036,7 @@ static class PlatformWindows
         }
     }
 
-    private static uint _terminalOwnerThreadId;
+    private static Lazy<uint> _terminalOwnerThreadId = new Lazy<uint>(() => 0);
 
     /// <remarks>
     /// This method helps to find the owner thread of the terminal window used by this pwsh instance,
@@ -1120,7 +1124,7 @@ static class PlatformWindows
 
     internal static IntPtr GetConsoleKeyboardLayout()
     {
-        return GetKeyboardLayout(_terminalOwnerThreadId);
+        return GetKeyboardLayout(_terminalOwnerThreadId.Value);
     }
 
     [DllImport("user32.dll")]

@@ -10,6 +10,11 @@ namespace Microsoft.PowerShell.PSReadLine
         public void OnImport()
         {
             AppDomain.CurrentDomain.AssemblyResolve += ResolveAssembly;
+
+            // Build the PSConsoleReadLine singleton (console setup, options, key bindings) on a background
+            // thread while the rest of startup, usually the profile, runs. The host name is the one thing it
+            // needs from the runspace, so read that here, on the importing thread.
+            BackgroundInitialization.Start();
         }
 
         public void OnRemove(PSModuleInfo module)
